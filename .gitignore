@@ -1,0 +1,12 @@
+*.filters
+*.ipch
+*.obj
+*.tlog
+*.pdb
+*.suo
+*.log
+*.ilk
+*.exe
+*.opendb
+*.idb
+*.db
