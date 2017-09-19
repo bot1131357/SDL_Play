@@ -1,8 +1,10 @@
 // 01_GameEngine_v2.cpp : Defines the entry point for the console application.
 //
 // 
-
+#if __linux__
+#else
 #include "stdafx.h"
+#endif
 #include <iostream>
 #include <iomanip> 
 #include <string>
@@ -20,8 +22,10 @@ using namespace std;
 
 const int framerate = 30;
 const int pollrate = 60;
-const int width = 400;
-const int height = 300;
+constexpr int width = 400;
+constexpr int height = 300;
+bool quit = false;
+
 
 enum Collision { 
 	Up, 
@@ -39,7 +43,7 @@ class SDLEventManager
 	atomic<bool> _keepRunning;
 	int _pollrate;
 	thread _eventLoop;
-	atomic<SDL_Window*> _gWindow=NULL;
+	atomic<SDL_Window*> _gWindow;
 	SDL_Surface* _gScreenSurface = NULL;
 
 
@@ -49,7 +53,7 @@ class SDLEventManager
 
 public:
 	SDLEventManager(int pollrate, int width, int height):
-		_pollrate(pollrate),_keepRunning(true)
+		_pollrate(pollrate),_keepRunning(true), _gWindow(NULL)
 	{
 
 		_keyDownHandler = bind([](SDL_Keycode k) {}, placeholders::_1);
@@ -70,7 +74,7 @@ public:
 			}
 
 			//Create window
-			_gWindow = SDL_CreateWindow("SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+			_gWindow = SDL_CreateWindow("SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, ::width, ::height, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 			if (_gWindow.load() == NULL)
 			{
 				throw runtime_error(string("Failed to create Window") + SDL_GetError() + "\n");
@@ -106,6 +110,7 @@ public:
 						_keyUpHandler(keycode);
 						break;
 					case SDL_QUIT:
+						quit = true;
 					default:
 						_eventHandler(e);
 					}
@@ -498,7 +503,7 @@ public:
 		// Deccelerate
 		_v_y = (_v_y < MIN_VEL && _v_y > -MIN_VEL) ? sgn(_v_y)*MIN_VEL : .999*_v_y;
 		_v_x = (_v_x < MIN_VEL && _v_x > -MIN_VEL) ? sgn(_v_x)*MIN_VEL : .999*_v_x;
-		cout << std::setprecision(2) << x << ",\t" << y << ",\t" << _v_x << ",\t" << _v_y << endl;
+		// cout << std::setprecision(2) << x << ",\t" << y << ",\t" << _v_x << ",\t" << _v_y << endl;
 		//cout << _v_x << ", " << _v_y << endl;
 	}
 	void accel(int a_x, int a_y)
@@ -550,6 +555,7 @@ public:
 		x_ = x;
 		y_ = y;
 
+		_v_x = 0;
 		SDL_SetColorKey(tempSurface, SDL_TRUE, SDL_MapRGB(tempSurface->format, 0xFF, 0xFF, 0xFF));
 		//Create texture from surface pixels
 		_texture = SDL_CreateTextureFromSurface(_gRenderer, tempSurface);
@@ -566,7 +572,7 @@ public:
 		SDL_RenderCopy(_gRenderer, _texture, &srcRect, &dstRect);
 	}
 	const float MAX_VEL = 300 / pollrate;
-	const float MIN_VEL = 1 / pollrate;
+	const float MIN_VEL = .1 / pollrate;
 	void update()
 	{
 		x_ = x;
@@ -979,7 +985,7 @@ int main(int argc, char* argv[])
 	chrono::high_resolution_clock::time_point t2;
 
 	t1 = chrono::high_resolution_clock::now();
-	while (1)
+	while (!quit)
 	{
 		switch (gameState)
 		{
