@@ -4,6 +4,7 @@
 
 #include "stdafx.h"
 #include <iostream>
+#include <iomanip> 
 #include <string>
 #include <vector>
 #include <thread>
@@ -182,6 +183,7 @@ public:
 
 	void startDrawing()
 	{
+		_keepAlive = true;
 		_thread_draw = thread([=]() {
 
 			chrono::high_resolution_clock::time_point t1;
@@ -206,6 +208,11 @@ public:
 				t1 = t2;
 			}
 		});
+	}
+	void stopDrawing()
+	{
+		_keepAlive = false;
+		_thread_draw.join();
 	}
 	const SDL_Surface* getScreenSurface() { return _gScreenSurface; }
 	SDL_Renderer* getScreenRenderer() { return _gRenderer; }
@@ -243,7 +250,7 @@ public:
 	const float get_x_() { return x_; }
 	const float& get_y_() { return y_; }
 };
-class Introscreen : public SDLEntity
+class IntroScreen : public SDLEntity
 {
 	SDL_Renderer* _gRenderer = NULL;
 	SDL_Texture* _texture = NULL;
@@ -251,7 +258,7 @@ class Introscreen : public SDLEntity
 	const int imheight = 480;
 	const int imwidth = 640;
 public:
-	Introscreen(string id, SDL_Renderer* gRenderer, string imgpath) :
+	IntroScreen(string id, SDL_Renderer* gRenderer, string imgpath) :
 		SDLEntity(id), _gRenderer(gRenderer)
 	{
 		srcRect = { 0,0,imwidth,imheight };
@@ -266,7 +273,7 @@ public:
 		_texture = SDL_CreateTextureFromSurface(_gRenderer, tempSurface);
 		SDL_FreeSurface(tempSurface);
 	}
-	~Introscreen()
+	~IntroScreen()
 	{
 		if (NULL != _texture)
 			SDL_DestroyTexture(_texture);
@@ -279,7 +286,43 @@ public:
 	{
 		srcRect.y += imheight;
 	}
+};
+class GameOverScreen : public SDLEntity
+{
+	SDL_Renderer* _gRenderer = NULL;
+	SDL_Texture* _texture = NULL;
+	SDL_Rect srcRect;
+	const int imheight = 480;
+	const int imwidth = 640;
+public:
+	GameOverScreen(string id, SDL_Renderer* gRenderer, string imgpath) :
+		SDLEntity(id), _gRenderer(gRenderer)
+	{
+		srcRect = { 0,0,imwidth,imheight };
+		dstRect = { 0,0,width,height };
+		SDL_Surface* tempSurface = IMG_Load(imgpath.c_str());
+		if (tempSurface == NULL)
+		{
+			throw runtime_error(string("Failed to load surface") + SDL_GetError() + "\n");
+		}
 
+		//Create texture from surface pixels
+		_texture = SDL_CreateTextureFromSurface(_gRenderer, tempSurface);
+		SDL_FreeSurface(tempSurface);
+	}
+	~GameOverScreen()
+	{
+		if (NULL != _texture)
+			SDL_DestroyTexture(_texture);
+	}
+	void draw()
+	{
+		SDL_RenderCopy(_gRenderer, _texture, &srcRect, &dstRect);
+	}
+	void update()
+	{
+
+	}
 };
 class Background : public SDLEntity
 {
@@ -333,6 +376,8 @@ class Ball : public SDLEntity
 	//SDL_Surface* _loadedSurface;
 	SDL_Rect srcRect;
 
+	float MAX_VEL;
+	float MIN_VEL;
 public:
 	Ball(string id, SDL_Renderer* gRenderer, string imgpath) :
 		SDLEntity(id), _gRenderer(gRenderer), _imgpath(imgpath)
@@ -356,6 +401,9 @@ public:
 		SDL_FreeSurface(tempSurface);
 		_v_x = _v_y = -100.0 / pollrate;
 		_a_x = _a_y = 0.0;
+
+		MAX_VEL = 200.0 / pollrate;
+		MIN_VEL = 50.0 / pollrate;
 	}
 	// Move
 	Ball(Ball&& other) :SDLEntity(other._id)
@@ -378,6 +426,10 @@ public:
 		srcRect = other.srcRect;
 		x_ = other.x;
 		y_ = other.y;
+
+
+		MAX_VEL = other.MAX_VEL;
+		MIN_VEL = other.MIN_VEL;
 	}
 	Ball& operator=(Ball&& other)
 	{
@@ -400,6 +452,8 @@ public:
 
 		this->x_ = this->x;
 		this->y_ = this->y;
+		this->MAX_VEL = other.MAX_VEL;
+		this->MIN_VEL = other.MIN_VEL;
 		return *this;
 	}
 	~Ball()
@@ -423,7 +477,7 @@ public:
 		x += _v_x;
 		y += _v_y;
 
-		const bool BALL_BOUNCES_ON_WALL = true;
+		const bool BALL_BOUNCES_ON_WALL = false;
 		const int LEFT_BOUND = 0;
 		const int RIGHT_BOUND = width;
 		if (BALL_BOUNCES_ON_WALL)
@@ -437,10 +491,14 @@ public:
 		dstRect.x = x;
 		dstRect.y = y; 
 
-		const float MAX_VEL = 300.0/ pollrate;
-		const float MIN_VEL = 50.0/ pollrate;
+		// Check speed limit
+		_v_y = (_v_y < -MAX_VEL || _v_y > MAX_VEL) ? sgn(_v_y)*MAX_VEL : _v_y;
+		_v_x = (_v_x < -MAX_VEL || _v_x > MAX_VEL) ? sgn(_v_x)*MAX_VEL : _v_x;
+
 		// Deccelerate
 		_v_y = (_v_y < MIN_VEL && _v_y > -MIN_VEL) ? sgn(_v_y)*MIN_VEL : .999*_v_y;
+		_v_x = (_v_x < MIN_VEL && _v_x > -MIN_VEL) ? sgn(_v_x)*MIN_VEL : .999*_v_x;
+		cout << std::setprecision(2) << x << ",\t" << y << ",\t" << _v_x << ",\t" << _v_y << endl;
 		//cout << _v_x << ", " << _v_y << endl;
 	}
 	void accel(int a_x, int a_y)
@@ -449,6 +507,17 @@ public:
 		//cout << "accel\n";
 	}
 
+	void bringBackToScreen()
+	{
+		x = width / 3;
+		y = height / 3;
+		x_ = x;
+		y_ = y;
+		dstRect.x = x;
+		dstRect.y = y;
+		_v_x = MIN_VEL;
+		_v_y = MIN_VEL;
+	}
 	bool isOutOfScreen()
 	{
 		if (x + dstRect.w < 0) return true;
@@ -462,10 +531,10 @@ class Paddle : public SDLEntity
 	SDL_Renderer* _gRenderer = NULL;
 	SDL_Texture* _texture = NULL;
 	//SDL_Surface* _loadedSurface;
-	SDL_Rect srcRect;
 
 
 public:
+	SDL_Rect srcRect;
 	Paddle(string id, SDL_Renderer* gRenderer, string imgpath) :
 		SDLEntity(id), _gRenderer(gRenderer)
 	{
@@ -540,6 +609,7 @@ public:
 	{
 		x = width - 50;
 		y = 50;
+		srcRect = { 11 - 1, 69 - 1,11,51 };
 		dstRect = { (int)x	,(int)y,11,51 };
 		_v_y = 0;
 	}
@@ -781,9 +851,6 @@ public:
 					if (ref.get_x() < obj.get_x() + obj.dstRect.w) // ref left bound is higher than obj right bound
 						res.set(Collision::Up);
 
-
-
-
 	if (res.count() > 0) res.set(Collision::Collided);
 	return res;
 }
@@ -799,23 +866,23 @@ public:
 
 		 if (res.test(Collision::Up))
 		 {
-			 ref._v_y += 0.1*obj._v_y;
+			 ref._v_y += 0.5*obj._v_y;
 			 ref._v_y = abs(ref._v_y);
 		 }
 		 if (res.test(Collision::Down))
 		 {
-			 ref._v_y += 0.1*obj._v_y;
+			 ref._v_y += 0.5*obj._v_y;
 			 ref._v_y = -abs(ref._v_y);
 		 }
 		 if (res.test(Collision::Left))
 		 {
 			 ref._v_y += 0.1*obj._v_y;
-			 ref._v_x = -ref._v_x;
+			 ref._v_x = -1.5*ref._v_x;
 		 }
 		 if (res.test(Collision::Right))
 		 {
 			 ref._v_y += 0.1*obj._v_y;
-			 ref._v_x = -ref._v_x;
+			 ref._v_x = -1.5*ref._v_x;
 		 }
 	 }
 	 else
@@ -826,7 +893,7 @@ public:
 
  }
 enum GameState {
-	Menu, Playing, GameOver, HighScore, Exit
+	Intro, Menu, Playing, GameOver, HighScore, Exit
 };
 #include <typeinfo>
 int main(int argc, char* argv[])
@@ -846,21 +913,14 @@ int main(int argc, char* argv[])
 	vector<Ball> balls;
 	const int n_balls = 1;
 	balls.reserve(n_balls);
-	for (int i = 0; i < n_balls; ++i)
-	{
-		balls.emplace_back(move(Ball("Ball", displayManager.getScreenRenderer(), "../sprites/pong.png")));
-	}
 	//Ball ball("Critter", displayManager.getScreenRenderer(), "../sprites/pong.png");
 
-	
+
+
 	// Register drawing
 	displayManager.registerEntity(bind(&Background::draw, &bg));
 	displayManager.registerEntity(bind(&BackgroundParallax::draw, &bg_parallax));
 	//displayManager.registerEntity(bind(&Ball::draw, &ball));
-	for (auto &b : balls)
-	{
-		displayManager.registerEntity(bind(&Ball::draw, &b));
-	}
 	displayManager.registerEntity(bind(&Paddle::draw, &paddle));
 	//displayManager.registerEntity(bind(&AIPaddle::draw, &aipaddle));
 	displayManager.registerEntity(bind(&decltype(aipaddle)::draw, &aipaddle));
@@ -904,22 +964,17 @@ int main(int argc, char* argv[])
 
 	});
 
-	// Intro
-	//Introscreen intro("Intro screen", displayManager.getScreenRenderer(), "../sprites/intro.png");
-	//cout << "Intro start\n";
-	//for (int n = 0; n < 6; ++n)
-	//{
-	//	intro.draw();
-	//	intro.update();
-	//	SDL_RenderPresent(displayManager.getScreenRenderer());
-	//	std::this_thread::sleep_for(chrono::milliseconds(150));
-	//}
-	std::this_thread::sleep_for(chrono::milliseconds(2000));
-	cout << "Intro end\n";
-
+	for (int i = 0; i < n_balls; ++i)
+	{
+		balls.emplace_back(move(Ball("Ball", displayManager.getScreenRenderer(), "../sprites/pong.png")));
+	}
+	for (auto &b : balls)
+	{
+		displayManager.registerEntity(bind(&Ball::draw, &b));
+		b.bringBackToScreen();
+	}
 
 	// Game loop
-	displayManager.startDrawing();
 	chrono::high_resolution_clock::time_point t1;
 	chrono::high_resolution_clock::time_point t2;
 
@@ -928,9 +983,31 @@ int main(int argc, char* argv[])
 	{
 		switch (gameState)
 		{
+		case GameState::Intro:
+		{
+			IntroScreen intro("Intro screen", displayManager.getScreenRenderer(), "../sprites/intro.png");
+			cout << "Intro start\n";
+			for (int n = 0; n < 6; ++n)
+			{
+				intro.draw();
+				intro.update();
+				SDL_RenderPresent(displayManager.getScreenRenderer());
+				std::this_thread::sleep_for(chrono::milliseconds(150));
+			}
+			std::this_thread::sleep_for(chrono::milliseconds(2000));
+			cout << "Intro end\n";
+			break;
+		}
 		case GameState::Menu:
 			cout << "Game Menu\n";
+
+			for (auto &b : balls)
+			{
+				b.bringBackToScreen();
+			}
+
 			gameState = GameState::Playing;
+			displayManager.startDrawing();
 			break;
 		case GameState::Playing:
 			cout << "Game Playing\n";
@@ -941,45 +1018,37 @@ int main(int argc, char* argv[])
 				b.update();
 			}
 			// has the ball been lost?
-			{
-				
-				auto new_end = std::remove_if(balls.begin(), balls.end(), std::bind(&Ball::isOutOfScreen, std::placeholders::_1));
-				balls.erase(new_end, balls.end()); // still need to set the balls.end
-			}
-			//for (auto it = balls.begin(); 
-			//	it != balls.end(); )
 			//{
-			//	if (it->isOutOfScreen()) 
-			//	{ 
-			//		balls.erase(it); 
-			//		it = balls.begin(); // don't like this line
-			//	}
-			//	else 
-			//	{ 
-			//		++it; 
-			//	}
+			//	
+			//	auto new_end = std::remove_if(balls.begin(), balls.end(), std::bind(&Ball::isOutOfScreen, std::placeholders::_1));
+			//	balls.erase(new_end, balls.end()); // still need to set the balls.end
 			//}
-			//balls.erase(balls.begin());
-			//{
-			//	auto i = std::begin(balls);
-			//	while (i != std::end(balls))
-			//	{
-			//		// Do some stuff
-			//		if (i->isOutOfScreen())
-			//			i = balls.erase(i);
-			//		else
-			//			++i;
-			//	}
-			//}
+
 			paddle.update();
 			aipaddle.update(balls);
 			bg_parallax.update(paddle);
+			{
+				int ballsOnScreen = balls.size() - std::count_if(balls.begin(), balls.end(), std::bind(&Ball::isOutOfScreen, std::placeholders::_1));
 
-			if(balls.size()==0)
-				gameState = GameState::GameOver;
+				if (ballsOnScreen == 0)
+				{
+					// let player come to terms with missing balls (cue awkward silence...)
+					std::this_thread::sleep_for(chrono::milliseconds(1000));
+					gameState = GameState::GameOver;
+				}
+
+			}
 			break;
 		case GameState::GameOver:
 			cout << "Game Over\n";
+			{
+				displayManager.stopDrawing();
+				GameOverScreen gameover("Game over screen", displayManager.getScreenRenderer(), "../sprites/game_over.png");
+				gameover.draw();
+				SDL_RenderPresent(displayManager.getScreenRenderer());
+				std::this_thread::sleep_for(chrono::seconds(3));
+				gameState = GameState::Menu;
+			}
 			break;
 		case GameState::HighScore:
 			cout << "High Score\n";

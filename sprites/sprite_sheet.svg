@@ -207,16 +207,16 @@
      borderopacity="0.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="0"
-     inkscape:zoom="1.4"
-     inkscape:cx="-639.54921"
-     inkscape:cy="881.46897"
+     inkscape:zoom="0.49497475"
+     inkscape:cx="-1730.4592"
+     inkscape:cy="392.24775"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
      inkscape:window-width="1536"
      inkscape:window-height="811"
      inkscape:window-x="-8"
-     inkscape:window-y="-8"
+     inkscape:window-y="832"
      inkscape:window-maximized="1" />
   <metadata
      id="metadata5199">
@@ -226,7 +226,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -427,6 +427,27 @@
        ry="8.2412796"
        rx="8.749999"
        transform="matrix(0.94493375,0,0,0.98122629,-35.178061,1.8002167)" />
+    <rect
+       style="fill:#00112d;fill-opacity:1;stroke:#000000;stroke-width:2.43623304;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="rect4151-2-6-2"
+       width="637.56378"
+       height="477.56378"
+       x="-1773.4015"
+       y="538.81879"
+       inkscape:export-xdpi="90"
+       inkscape:export-ydpi="90" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:20px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       x="-1666.7517"
+       y="977.61096"
+       id="text4254"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan4256"
+         x="-1666.7517"
+         y="977.61096"
+         style="font-size:40px;fill:#fcfcfc;fill-opacity:1">GAME OVER</tspan></text>
   </g>
   <g
      inkscape:groupmode="layer"
