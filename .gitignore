@@ -1,5 +1,7 @@
 *.filters
 *.ipch
+*.pch
+*.enc
 *.obj
 *.tlog
 *.pdb

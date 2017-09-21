@@ -1,10 +1,10 @@
 // 01_GameEngine_v2.cpp : Defines the entry point for the console application.
 //
 // 
-#if __linux__
-#else
+//#if __linux__
+//#else
 #include "stdafx.h"
-#endif
+//#endif
 #include <iostream>
 #include <iomanip> 
 #include <string>
@@ -37,6 +37,7 @@ enum Collision {
 template <typename T> int sgn(T val) {
 	return (T(0) < val) - (val < T(0));
 }
+
 
 class SDLEventManager
 {
