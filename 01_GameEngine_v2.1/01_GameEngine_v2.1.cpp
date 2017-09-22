@@ -37,7 +37,6 @@ class SDLEventManager
 	atomic<SDL_Window*> _gWindow;
 	SDL_Surface* _gScreenSurface = NULL;
 
-
 	function<void(SDL_Event)> _eventHandler;
 	function<void(SDL_Keycode)> _keyDownHandler;
 	function<void(SDL_Keycode)> _keyUpHandler;
