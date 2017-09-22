@@ -140,10 +140,9 @@ class SDLViewManager
 {
 	std::mutex mtx_drawing;
 	std::condition_variable cv_drawing;
-	bool keepDrawing = false;
+	bool _keepDrawing;
 
 	mutex mtx_drawfunctions;
-	bool _keepAlive;
 	thread _thread_draw;
 	function<void(void)> _drawFunction = []() {};
 	unordered_map<string, SDL_Texture*> _textures;
@@ -153,7 +152,7 @@ class SDLViewManager
 	SDL_Surface* _screenSurface = NULL;
 public:
 	SDLViewManager(SDL_Window* gWindow) :
-		_window(gWindow), _keepAlive(true)
+		_window(gWindow), _keepDrawing(true)
 	{
 		//Get window surface
 		_screenSurface = SDL_GetWindowSurface(_window);
@@ -163,11 +162,42 @@ public:
 
 		//Initialize renderer color
 		SDL_SetRenderDrawColor(_renderer, 0xFF, 0xFF, 0xFF, 0xFF);
+		
+		_thread_draw = thread([=]() {
+			GameConfig& gc = GameConfig::getInstance();
+			chrono::high_resolution_clock::time_point t1;
+			chrono::high_resolution_clock::time_point t2;
+			t1 = chrono::high_resolution_clock::now();
+
+			// this loop runs until quit
+			while (!gc.quit)
+			{
+				unique_lock<mutex> lk(mtx_drawing);
+				cv_drawing.wait(lk, [&] {return _keepDrawing || !gc.quit; });
+
+				// This loop runs when drawig is needed
+				while (_keepDrawing)
+				{
+					// Calls the registered draw functions
+					{
+						lock_guard<mutex> lg(mtx_drawfunctions);
+						_drawFunction();
+					}
+
+					// Update rendered screen
+					SDL_RenderPresent(_renderer);
+
+					t2 = chrono::high_resolution_clock::now();
+					this_thread::sleep_for(chrono::milliseconds(1000 / gc.framerate) - (t2 - t1));
+					t1 = t2;
+				}
+			}
+		});
+
 	}
 
 	~SDLViewManager() {
-		_keepAlive = false;
-		if (_thread_draw.joinable()) _thread_draw.join();
+		stopDrawing();
 	}
 
 	void addTexture(string id, string imgpath)
@@ -184,34 +214,16 @@ public:
 
 	void startDrawing()
 	{
-		_keepAlive = true;
-		_thread_draw = thread([=]() {
-			GameConfig& gc = GameConfig::getInstance();
-			chrono::high_resolution_clock::time_point t1;
-			chrono::high_resolution_clock::time_point t2;
-			t1 = chrono::high_resolution_clock::now();
-			while (_keepAlive)
-			{
-				// Calls the registered draw functions
-				{
-					lock_guard<mutex> lg(mtx_drawfunctions);
-					_drawFunction();
-				}
-
-				// Update rendered screen
-				SDL_RenderPresent(_renderer);
-
-				t2 = chrono::high_resolution_clock::now();
-				this_thread::sleep_for(chrono::milliseconds(1000 / gc.framerate) - (t2 - t1));
-				t1 = t2;
-			}
-		});
+		_keepDrawing = true;
+		cv_drawing.notify_one();
 	}
 	void stopDrawing() 
 	{
-		_keepAlive = false;
-		_thread_draw.join();
+		cv_drawing.notify_one();
+		_keepDrawing = false;
+		if (_thread_draw.joinable()) _thread_draw.join();
 	}
+
 	const SDL_Surface* getScreenSurface() { return _screenSurface; }
 	unordered_map<string, SDL_Texture*>& getTextures() { return _textures; }
 	SDL_Renderer* getScreenRenderer() { return _renderer; }
@@ -247,7 +259,8 @@ protected:
 	function<void(SDL_Keycode)> _keyDownHandler = [&](SDL_Keycode k) {};
 public:
 
-	Scene(SDLViewManager& viewMan) :_renderer(viewMan.getScreenRenderer()), _textures(viewMan.getTextures()) { viewMan.setDrawFunction(bind(&Scene::drawFunction, this)); }
+	Scene(SDLViewManager& viewMan) :_renderer(viewMan.getScreenRenderer()), _textures(viewMan.getTextures()), _layers{ unordered_set<shared_ptr<Entity>>() } 
+	{ viewMan.setDrawFunction(bind(&Scene::drawFunction, this)); }
 
 	void drawFunction()
 	{
@@ -279,7 +292,7 @@ public:
 		chrono::high_resolution_clock::time_point t2;
 		t1 = chrono::high_resolution_clock::now();
 
-		while (keepAlive)
+		while (keepAlive && !gc.quit)
 		{
 			for (auto& m : _layers)
 			{
@@ -290,13 +303,11 @@ public:
 				}
 			}
 
+			t2 = chrono::high_resolution_clock::now();
+			this_thread::sleep_for(chrono::milliseconds(1000 / gc.pollrate) - (t2 - t1));
+			t1 = t2;
 		}
-		// Update rendered screen
-		SDL_RenderPresent(_renderer);
 
-		t2 = chrono::high_resolution_clock::now();
-		this_thread::sleep_for(chrono::milliseconds(1000 / gc.framerate) - (t2 - t1));
-		t1 = t2;
 	}
 	void addEntity(shared_ptr<Entity> e, uint8_t l)
 	{
