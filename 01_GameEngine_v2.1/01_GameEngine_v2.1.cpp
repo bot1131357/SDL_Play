@@ -6,10 +6,11 @@
 #include <iomanip> 
 #include <string>
 #include <vector>
-#include<unordered_map>
-#include<unordered_set>
+#include <unordered_map>
+#include <unordered_set>
 #include <thread>
 #include <mutex>
+#include <condition_variable>
 #include <atomic>
 #include <bitset>
 #include <algorithm>
@@ -118,18 +119,18 @@ public:
 		return _gWindow.load();
 	}
 
-	void SDLEventManager::registerEventHandler(function<void(SDL_Event)> eventHandler)
+	void registerEventHandler(function<void(SDL_Event)> eventHandler)
 	{
 		_eventHandler = eventHandler;
 	}
 
-	void SDLEventManager::registerKeyHandler(function<void(SDL_Keycode)> keyDownHandler, function<void(SDL_Keycode)> keyUpHandler)
+	void registerKeyHandler(function<void(SDL_Keycode)> keyDownHandler, function<void(SDL_Keycode)> keyUpHandler)
 	{
 		_keyDownHandler = keyDownHandler;
 		_keyUpHandler = keyUpHandler;
 	}
 
-	void SDLEventManager::registerMouseHandler(function<void(SDL_Event)> inputHandler)
+	void registerMouseHandler(function<void(SDL_Event)> inputHandler)
 	{
 		// stub
 	}

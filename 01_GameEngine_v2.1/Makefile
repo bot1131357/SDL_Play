@@ -7,7 +7,7 @@ LIBRARIES= -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf
 # Other C flags
 CFLAGS=-std=c++11 -pthread -fpermissive
 
-SRC=01_GameEngine_v2.cpp
+SRC=01_GameEngine_v2.1.cpp
 
 all: test #ptest
 
